@@ -1,9 +1,11 @@
-from flask import Flask, request
+from flask import Flask, request,jsonify
 from flask_restx import Api,Resource,fields, marshal_with
 from config import DevConfig
-from models import Recipe
+from models import Recipe, user
 from exts import db
 from flask_migrate import Migrate
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import JWTManger, create_access_token, create_refresh_token
 
 app=Flask(__name__)
 
@@ -15,6 +17,8 @@ app.config.from_object(DevConfig)
 db.init_app(app)
 
 migrate =Migrate(app,db)
+
+JWTManger(app)
 
 api=Api(app,doc='/docs')
 
@@ -28,11 +32,75 @@ recipe_model = api.model(
     }
 )
 
+signup_model=api.model(
+    "SignUp",{
+        "username":fields.String(),
+        "email":fields.String(),
+        "password":fields.String()
+    }
+)
+
+login_model=api.model(
+    "Login",{
+        "username":fields.String(),
+        "password":fields.String()
+    }
+)
 
 @api.route('/hello')
 class HelloResource(Resource):
     def get(self):
         return {"message":"Hello World"}
+
+@api.route('/signup')
+class Signup(Resource):
+    @api.marshal_with(signup_model)
+    @api.expect(signup_model)
+    def post(self):
+        data=request.get_json()
+
+        username=data.get('username')
+
+        db_user = user.query.filter_by(username=username).first()
+
+        if db_user is not None:
+            return jsonify({"message":"User with username {username} already exit"})
+        else:
+            new_user=user(
+                username=data.get('username'),
+                email=data.get('email'),
+                password=generate_password_hash(data.get('password'))
+            )
+            new_user.save()
+
+            return jsonify({"message":"User created successfully"})
+            
+
+@api.route('/login')
+class Login(Resource):
+
+    @api.expect(login_model)
+    def post(self):
+        data=request.get_json()
+
+        username = data.get('username')
+        password = data.get('password')
+
+        db_user=user.query.filter_by(username=username).first()
+
+        if db_user and check_password_hash(db_user.password,password):
+
+            access_tokem = create_access_token(identity=db_user.username)
+            refresh_token = create_refresh_token(identity=db_user.username)
+
+            return jsonify({"access toekn":access_tokem, "refresh_token":refresh_token})
+
+
+@api.route('/logout')
+class Logout(Resource):
+    def post(self):
+        pass
+
 
 
 @api.marshal_with(recipe_model)
@@ -47,6 +115,8 @@ class RecipesResources(Resource):
 
         return recipes
 
+    @api.marshal_with(recipe_model)
+    @api.expect(recipe_model)
     def post(self):
         """Create a new recipe"""
 
