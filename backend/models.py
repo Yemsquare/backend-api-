@@ -29,4 +29,5 @@ class Recipe(db.Model):
         self.title=title
         self.description=description
         
+        db.session.commit()
 
