@@ -9,6 +9,7 @@ flask-sqlalchemy = "*"
 flask-jwt-extended = "*"
 python-decouple = "*"
 flask-restx = "*"
+flask-migrate = "*"
 
 [dev-packages]
 
