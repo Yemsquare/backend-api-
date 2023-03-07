@@ -1,7 +1,7 @@
 from flask_restx import Namespace, Resource, fields
 from models import Recipe
 from flask_jwt_extended import create_access_token, create_refresh_token, JWTManager, jwt_required
-#from flask import Flask, request,jsonify
+from flask import Flask, request,jsonify
 
 
 
@@ -63,6 +63,7 @@ class RecipesResources(Resource):
 @recipe_ns.route('/recipe/<int:id>') 
 class RecipeResource(Resource):
 
+    @jwt_required
     @recipe_ns.marshal_with(recipe_model)
     def get(self, id):
         """Get a recipe by id """
